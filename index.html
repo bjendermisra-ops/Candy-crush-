@@ -26,7 +26,7 @@ touch-action:none;
 }
 canvas{width:100%;height:100%;touch-action:none;-ms-touch-action:none;}
 
-/* Privacy button */
+/* Privacy button styling */
 #privacyBtn{
 position:fixed;
 bottom:20px;
@@ -41,6 +41,27 @@ z-index:99999;
 opacity:.85;
 }
 #privacyBtn:active{opacity:1;}
+
+/* Naya Home / Back button styling */
+#homeBtn{
+position:fixed;
+top:20px;
+left:15px;
+padding:8px 14px;
+font-size:14px;
+font-weight:bold;
+border-radius:12px;
+border:2px solid #fff;
+background:rgba(255, 50, 50, 0.85);
+color:#fff;
+z-index:99999;
+display:none; /* Starting mein hide rahega */
+box-shadow: 0px 4px 6px rgba(0,0,0,0.3);
+}
+#homeBtn:active{
+transform: scale(0.95);
+opacity:1;
+}
 </style>
 </head>
 
@@ -53,6 +74,9 @@ opacity:.85;
 
 <!-- Privacy Policy Button -->
 <button id="privacyBtn">Privacy Policy</button>
+
+<!-- Back to Home Button -->
+<button id="homeBtn">🏠 Home</button>
 
 <script src="jquery-3.4.1.min.js"></script>
 <script src="c2runtime.js"></script>
@@ -87,12 +111,29 @@ jQuery(document).ready(function ()
 
         function pollGame(){
             const rt=cr_getC2Runtime();
+            if(!rt || !rt.globalVars) return; // Safety check
+
             const gv=rt.globalVars;
 
             const score=gv.Score?.value||0;
             const record=gv.record?.value||0;
             const gameOn=gv.GameOn?.value||0;
             const timer=gv.Timer?.value||0;
+
+            // ---- UI Hide/Show Logic ----
+            const privacyBtn = document.getElementById("privacyBtn");
+            const homeBtn = document.getElementById("homeBtn");
+
+            if(gameOn === 1) {
+                // Agar user khel raha hai (game chal raha hai): Privacy hide karo, Home dikhao
+                if(privacyBtn) privacyBtn.style.display = 'none';
+                if(homeBtn) homeBtn.style.display = 'block';
+            } else {
+                // Main Menu ya Loading Screen par: Privacy show karo, Home hide karo
+                if(privacyBtn) privacyBtn.style.display = 'block';
+                if(homeBtn) homeBtn.style.display = 'none';
+            }
+            // ----------------------------
 
             if(gameOn===0 && score>0 && !sentGameOver){
                 sentGameOver=true;
@@ -105,7 +146,7 @@ jQuery(document).ready(function ()
             }
         }
 
-        setInterval(pollGame,400);
+        setInterval(pollGame,400); // Check every 400ms
     });
 });
 
@@ -118,14 +159,37 @@ document.addEventListener("visibilitychange",onVisibilityChanged,false);
 
 /* Privacy Policy Click */
 document.getElementById("privacyBtn").addEventListener("click",function(){
-
     var url="YOUR_PRIVACY_LINK"; // <-- CHANGE THIS
-
     if(window.Android && Android.openExternal){
         Android.openExternal(url);
     }else{
         window.open(url,"_blank");
     }
+});
+
+/* Home/Back Button Click (Naya Feature) */
+document.getElementById("homeBtn").addEventListener("click",function(){
+    // Agar mid-game mein user quit kare, toh current score app me update karwa do
+    if(window.cr_getC2Runtime){
+        const rt = cr_getC2Runtime();
+        if(rt && rt.globalVars){
+            const gv = rt.globalVars;
+            const score = gv.Score?.value||0;
+            const record = gv.record?.value||0;
+            const timer = gv.Timer?.value||0;
+            
+            if(window.Android && Android.onGameEvent){
+                Android.onGameEvent(JSON.stringify({
+                    event:"game_over",
+                    data:{score, record, time:timer},
+                    time:Date.now()
+                }));
+            }
+        }
+    }
+    
+    // Page reload karke seedha Start Menu par aa jayenge
+    window.location.reload();
 });
 </script>
 
